@@ -101,9 +101,7 @@ const WorldHeatMap = ({ emissionsData, year }) => {
         <h2>🌍 Mapa Mundial de Emisiones de CO₂</h2>
         <p>Visualización de zonas más contaminadas por país ({currentYear})</p>
         
-        <div className="map-info">
-          <p><strong>Fuente:</strong> co2-dataclean.csv | <strong>Países mostrados:</strong> {localGeoData.features.length}</p>
-        </div>
+        
       </div>
 
       <div className="map-container">
