@@ -98,8 +98,14 @@ function App() {
     ? Math.max(...aggregatedData.map(d => d.year)) 
     : new Date().getFullYear() - 1;
   
-  const topCountries = getTopCountries(countryData, latestYear, 5);
-  const latestGlobalEmissions = aggregatedData.find(d => d.year === latestYear)?.totalEmissions || 0;
+  // Obtener top países - maneja tanto modo todos los países como país individual
+  const topCountries = filters.selectedCountry !== 'all' 
+    ? getTopCountries(countryData, latestYear, 1, filters.selectedCountry)
+    : getTopCountries(countryData, latestYear, 5);
+
+  // Para el cálculo de emisiones globales, siempre usar todos los países (no filtrados)
+  const globalAggregatedData = aggregateByYear(countryData);
+  const latestGlobalEmissions = globalAggregatedData.find(d => d.year === latestYear)?.totalEmissions || 0;
 
   // Datos para la nueva sección global
   const topContaminatedYears = getTopContaminatedYears(globalData, 5);
@@ -107,9 +113,6 @@ function App() {
 
   // Obtener lista de países únicos para el filtro
   const uniqueCountries = [...new Set(countryData.map(item => item.entity))].sort();
-
-  // Datos para el mapa (todos los países del año seleccionado)
-  const mapData = countryData.filter(item => item.year === mapYear);
 
   // Obtener años disponibles para el mapa
   const availableYears = countryData.length > 0 
@@ -180,6 +183,19 @@ function App() {
             <p><strong>Fuente:</strong> co2-dataclean.csv - Datos específicos por país y continente</p>
           </div>
 
+          {/* Indicador de modo país individual */}
+          {filters.selectedCountry !== 'all' && (
+            <div className="country-mode-indicator">
+              <h3>📊 Vista Individual: {filters.selectedCountry}</h3>
+              <p>Mostrando datos específicos para este país. <button 
+                onClick={() => setFilters({...filters, selectedCountry: 'all'})}
+                className="back-to-all-btn"
+              >
+                Ver todos los países
+              </button></p>
+            </div>
+          )}
+
           <Filters 
             filters={filters} 
             onFiltersChange={setFilters}
@@ -191,23 +207,30 @@ function App() {
             yearlyVariation={dataWithVariation[dataWithVariation.length - 1]?.variation || 0}
             topCountries={topCountries}
             latestYear={latestYear}
+            isSingleCountry={filters.selectedCountry !== 'all'}
+            countryName={filters.selectedCountry !== 'all' ? filters.selectedCountry : ''}
           />
 
           <div className="charts-grid">
             <div className="chart-container full-width">
               <EmissionsChart 
                 data={dataWithVariation}
-                title="Tendencia de Emisiones por Países"
+                title={filters.selectedCountry !== 'all' 
+                  ? `Tendencia de Emisiones de ${filters.selectedCountry}`
+                  : "Tendencia de Emisiones por Países"
+                }
                 showVariation={true}
               />
             </div>
             
-            <div className="chart-container">
-              <CountryComparison 
-                data={topCountries}
-                title={`Top 5 Países Emisores (${latestYear})`}
-              />
-            </div>
+            {filters.selectedCountry === 'all' && (
+              <div className="chart-container">
+                <CountryComparison 
+                  data={topCountries}
+                  title={`Top 5 Países Emisores (${latestYear})`}
+                />
+              </div>
+            )}
             
             <div className="chart-container">
               <h3>📋 Información del Dataset</h3>
@@ -223,7 +246,7 @@ function App() {
 
           {/* Tabla de datos para referencia */}
           <div className="data-table-container">
-            <h3>👀 Vista Previa de Datos de Países ({filteredData.length} registros)</h3>
+            <h3>👀 Vista Previa de Datos ({filteredData.length} registros)</h3>
             <div className="data-table">
               <table>
                 <thead>

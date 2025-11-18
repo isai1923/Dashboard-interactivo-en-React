@@ -123,6 +123,56 @@ export const getGlobalData = (rawData) => {
     .sort((a, b) => a.year - b.year);
 };
 
+// Función para obtener datos de un país específico con crecimiento
+export const getCountryWithGrowth = (data, countryName, year) => {
+  const currentYearData = data.find(item => item.entity === countryName && item.year === year);
+  const previousYearData = data.find(item => item.entity === countryName && item.year === year - 1);
+  
+  if (!currentYearData) return null;
+  
+  const growth = previousYearData && previousYearData.emissions > 0 
+    ? ((currentYearData.emissions - previousYearData.emissions) / previousYearData.emissions) * 100
+    : 0;
+  
+  // Calcular ranking global
+  const yearData = data.filter(item => item.year === year);
+  const sortedByEmissions = yearData.sort((a, b) => b.emissions - a.emissions);
+  const globalRank = sortedByEmissions.findIndex(item => item.entity === countryName) + 1;
+  
+  return {
+    ...currentYearData,
+    growth: parseFloat(growth.toFixed(2)),
+    globalRank: globalRank > 0 ? globalRank : null
+  };
+};
+
+// Función actualizada para getTopCountries que maneje país individual
+export const getTopCountries = (data, year, limit = 10, specificCountry = null) => {
+  if (specificCountry) {
+    // Modo país específico
+    const countryData = getCountryWithGrowth(data, specificCountry, year);
+    return countryData ? [{
+      country: countryData.entity,
+      emissions: countryData.emissions,
+      code: countryData.code,
+      growth: countryData.growth,
+      globalRank: countryData.globalRank
+    }] : [];
+  }
+  
+  // Modo normal (top países)
+  const yearData = data.filter(item => item.year === year);
+  
+  return yearData
+    .sort((a, b) => b.emissions - a.emissions)
+    .slice(0, limit)
+    .map(item => ({
+      country: item.entity,
+      emissions: item.emissions,
+      code: item.code
+    }));
+};
+
 // Obtener los años más contaminados a nivel mundial
 export const getTopContaminatedYears = (globalData, limit = 5) => {
   return [...globalData]
@@ -162,19 +212,6 @@ export const aggregateByYear = (data) => {
       totalEmissions: emissions
     }))
     .sort((a, b) => a.year - b.year);
-};
-
-export const getTopCountries = (data, year, limit = 10) => {
-  const yearData = data.filter(item => item.year === year);
-  
-  return yearData
-    .sort((a, b) => b.emissions - a.emissions)
-    .slice(0, limit)
-    .map(item => ({
-      country: item.entity,
-      emissions: item.emissions,
-      code: item.code
-    }));
 };
 
 export const calculateYearlyVariation = (aggregatedData) => {
