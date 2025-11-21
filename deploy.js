@@ -1,4 +1,4 @@
-// deploy.js
+// deploy.js corregido
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -19,9 +19,9 @@ try {
   console.log('📁 Contenido de build/data:');
   execSync('ls -la build/data/', { stdio: 'inherit' });
 
-  // Desplegar
+  // Desplegar (sin --force)
   console.log('🌐 Desplegando a GitHub Pages...');
-  execSync('npx gh-pages -d build --branch gh-pages --repo https://github.com/isai1923/Dashboard-interactivo-en-React.git --force', { stdio: 'inherit' });
+  execSync('npx gh-pages -d build --branch gh-pages --repo https://github.com/isai1923/Dashboard-interactivo-en-React.git', { stdio: 'inherit' });
   
   console.log('✅ ¡Despliegue completado!');
   console.log('🌍 Tu dashboard está en: https://isai1923.github.io/Dashboard-interactivo-en-React/');
