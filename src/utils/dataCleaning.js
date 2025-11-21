@@ -8,47 +8,25 @@ const GLOBAL_ENTITIES = [
   'North America (excl. USA)', 'International transport', 'Non-OECD', 'OECD'
 ];
 
-// Función auxiliar para construir rutas absolutas
-const getCSVPath = (filename) => {
-  // En desarrollo: usa la ruta relativa
-  // En producción: usa la ruta absoluta desde el root del dominio
-  if (process.env.NODE_ENV === 'production') {
-    return `${process.env.PUBLIC_URL}/data/${filename}`;
-  }
-  return `/data/${filename}`;
-};
-
 // Cargar datos de países desde co2-dataclean.csv
 export const loadCountryData = async () => {
-  const countryDataUrl = getCSVPath('co2-dataclean.csv');
-  console.log('🌍 Cargando datos de países desde:', countryDataUrl);
-  
   try {
     // Método 1: Usando d3-fetch
-    const data = await csv(countryDataUrl);
-    console.log('✅ Datos de países cargados con d3-fetch:', data.length);
+    const data = await csv('/data/co2-dataclean.csv');
     return data;
   } catch (error) {
-    console.error('❌ Error cargando co2-dataclean.csv con d3-fetch:', error);
+    console.error('Error cargando co2-dataclean.csv con d3-fetch:', error);
     
     // Método 2: Usando PapaParse como fallback
     return new Promise((resolve, reject) => {
-      console.log('🔄 Intentando cargar con PapaParse...');
-      Papa.parse(countryDataUrl, {
+      Papa.parse('/data/co2-dataclean.csv', {
         download: true,
         header: true,
         dynamicTyping: true,
         complete: (results) => {
-          if (results.errors.length > 0) {
-            console.error('❌ Errores en PapaParse:', results.errors);
-            reject(new Error(`Error parsing CSV: ${results.errors[0].message}`));
-          } else {
-            console.log('✅ Datos de países cargados con PapaParse:', results.data.length);
-            resolve(results.data);
-          }
+          resolve(results.data);
         },
         error: (error) => {
-          console.error('❌ Error fatal en PapaParse:', error);
           reject(error);
         }
       });
@@ -58,35 +36,23 @@ export const loadCountryData = async () => {
 
 // Cargar datos mundiales desde co2-data.csv
 export const loadWorldData = async () => {
-  const worldDataUrl = getCSVPath('co2-data.csv');
-  console.log('🌐 Cargando datos mundiales desde:', worldDataUrl);
-  
   try {
     // Método 1: Usando d3-fetch
-    const data = await csv(worldDataUrl);
-    console.log('✅ Datos mundiales cargados con d3-fetch:', data.length);
+    const data = await csv('/data/co2-data.csv');
     return data;
   } catch (error) {
-    console.error('❌ Error cargando co2-data.csv con d3-fetch:', error);
+    console.error('Error cargando co2-data.csv con d3-fetch:', error);
     
     // Método 2: Usando PapaParse como fallback
     return new Promise((resolve, reject) => {
-      console.log('🔄 Intentando cargar con PapaParse...');
-      Papa.parse(worldDataUrl, {
+      Papa.parse('/data/co2-data.csv', {
         download: true,
         header: true,
         dynamicTyping: true,
         complete: (results) => {
-          if (results.errors.length > 0) {
-            console.error('❌ Errores en PapaParse:', results.errors);
-            reject(new Error(`Error parsing CSV: ${results.errors[0].message}`));
-          } else {
-            console.log('✅ Datos mundiales cargados con PapaParse:', results.data.length);
-            resolve(results.data);
-          }
+          resolve(results.data);
         },
         error: (error) => {
-          console.error('❌ Error fatal en PapaParse:', error);
           reject(error);
         }
       });
@@ -94,12 +60,13 @@ export const loadWorldData = async () => {
   }
 };
 
-// ... (el resto de las funciones se mantienen igual)
+// Limpiar y procesar datos de países (co2-dataclean.csv)
 export const cleanCountryData = (rawData) => {
   if (!rawData || !Array.isArray(rawData)) return [];
 
   return rawData
     .filter(item => {
+      // Verificar que tenga los campos necesarios
       const hasEntity = item.Entity || item.country || item.entity;
       const hasYear = item.Year || item.year;
       const hasEmissions = item['Annual CO₂ emissions'] || item.emissions || item.co2;
@@ -107,6 +74,7 @@ export const cleanCountryData = (rawData) => {
       return hasEntity && hasYear && hasEmissions !== null && hasEmissions !== undefined;
     })
     .map(item => {
+      // Normalizar nombres de campos
       const entity = item.Entity || item.country || item.entity || 'Unknown';
       const year = parseInt(item.Year || item.year);
       const emissions = parseFloat(item['Annual CO₂ emissions'] || item.emissions || item.co2 || 0);
@@ -124,7 +92,7 @@ export const cleanCountryData = (rawData) => {
     .sort((a, b) => a.year - b.year);
 };
 
-// ... (todas las demás funciones exportadas se mantienen igual)
+// Obtener datos mundiales específicos (de co2-data.csv)
 export const getGlobalData = (rawData) => {
   if (!rawData || !Array.isArray(rawData)) return [];
 
@@ -134,6 +102,7 @@ export const getGlobalData = (rawData) => {
       const hasYear = item.Year || item.year;
       const hasEmissions = item['Annual CO₂ emissions'] || item.emissions || item.co2;
       
+      // INCLUIR SOLO datos mundiales
       const isWorld = entity === 'World' || entity === 'OWID_WRL';
       
       return isWorld && hasYear && hasEmissions !== null && hasEmissions !== undefined;
@@ -154,6 +123,7 @@ export const getGlobalData = (rawData) => {
     .sort((a, b) => a.year - b.year);
 };
 
+// Función para obtener datos de un país específico con crecimiento
 export const getCountryWithGrowth = (data, countryName, year) => {
   const currentYearData = data.find(item => item.entity === countryName && item.year === year);
   const previousYearData = data.find(item => item.entity === countryName && item.year === year - 1);
@@ -164,6 +134,7 @@ export const getCountryWithGrowth = (data, countryName, year) => {
     ? ((currentYearData.emissions - previousYearData.emissions) / previousYearData.emissions) * 100
     : 0;
   
+  // Calcular ranking global
   const yearData = data.filter(item => item.year === year);
   const sortedByEmissions = yearData.sort((a, b) => b.emissions - a.emissions);
   const globalRank = sortedByEmissions.findIndex(item => item.entity === countryName) + 1;
@@ -175,8 +146,10 @@ export const getCountryWithGrowth = (data, countryName, year) => {
   };
 };
 
+// Función actualizada para getTopCountries que maneje país individual
 export const getTopCountries = (data, year, limit = 10, specificCountry = null) => {
   if (specificCountry) {
+    // Modo país específico
     const countryData = getCountryWithGrowth(data, specificCountry, year);
     return countryData ? [{
       country: countryData.entity,
@@ -187,6 +160,7 @@ export const getTopCountries = (data, year, limit = 10, specificCountry = null) 
     }] : [];
   }
   
+  // Modo normal (top países)
   const yearData = data.filter(item => item.year === year);
   
   return yearData
@@ -199,6 +173,7 @@ export const getTopCountries = (data, year, limit = 10, specificCountry = null) 
     }));
 };
 
+// Obtener los años más contaminados a nivel mundial
 export const getTopContaminatedYears = (globalData, limit = 5) => {
   return [...globalData]
     .sort((a, b) => b.emissions - a.emissions)
@@ -211,6 +186,7 @@ export const getTopContaminatedYears = (globalData, limit = 5) => {
     }));
 };
 
+// Obtener el año más contaminado
 export const getMostContaminatedYear = (globalData) => {
   if (!globalData || globalData.length === 0) return null;
   
@@ -219,6 +195,7 @@ export const getMostContaminatedYear = (globalData) => {
   );
 };
 
+// Funciones de agregación para países
 export const aggregateByYear = (data) => {
   const yearlyAggregation = {};
   
@@ -265,10 +242,12 @@ export const getCountryData = (data, countryName) => {
     .sort((a, b) => a.year - b.year);
 };
 
+// Función para obtener datos de un año específico para el mapa
 export const getDataForYear = (data, year) => {
   return data.filter(item => item.year === year);
 };
 
+// Función para normalizar nombres de países (opcional, para mejor matching con el geoJSON)
 export const normalizeCountryNames = (data) => {
   const nameMappings = {
     'United States': 'United States of America',
@@ -277,6 +256,7 @@ export const normalizeCountryNames = (data) => {
     'South Korea': 'Korea, Republic of',
     'North Korea': "Korea, Democratic People's Republic of",
     'Vietnam': 'Viet Nam',
+    // Agrega más mapeos según sea necesario
   };
   
   return data.map(item => ({
